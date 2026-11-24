@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parchís</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --azul:#1f5f8b; --oro:#e0a100; --fondo:#f4efe0; --texto:#212121; --gris:#6b6b6b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#161616; --texto:#f2efe6; --gris:#a9a396; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--fondo); color:var(--texto); font-family: system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:480px; padding:32px 24px; text-align:center; }
+  h1 { margin:0 0 6px; font-size:2.6rem; letter-spacing:.04em; color:var(--azul); }
+  @media (prefers-color-scheme: dark) { h1 { color:#6fb1ff; } }
+  .dados { display:flex; gap:8px; justify-content:center; margin:0 0 18px; }
+  .dados span { width:22px; height:22px; border-radius:50%; display:block; box-shadow:0 2px 4px rgba(0,0,0,.35); }
+  .a{background:#f9c80e}.b{background:#1e88e5}.r{background:#e53935}.v{background:#43a047}
+  #estado { font-size:1.15rem; margin:14px 0 6px; }
+  #detalle { color:var(--gris); font-size:.9rem; margin:6px 0 0; }
+  .boton { display:inline-block; margin-top:18px; padding:13px 30px; border-radius:14px; text-decoration:none;
+           font-weight:700; color:#2a1d00; background:linear-gradient(#f3c23a,#d9a006,#a87800);
+           box-shadow:0 4px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.55); }
+  .boton[hidden] { display:none; }
+  .apagado { color:#b3402f; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PARCHÍS</h1>
+  <div class="dados" aria-hidden="true"><span class="a"></span><span class="b"></span><span class="r"></span><span class="v"></span></div>
+  <p id="estado">Buscando el servidor…</p>
+  <a id="boton" class="boton" hidden>Entrar al Parchís</a>
+  <p id="detalle"></p>
+  <noscript><p>Necesitas activar JavaScript para que esta página te lleve al juego.</p></noscript>
+</main>
+<script>
+(async () => {
+  // La URL del juego (un túnel de Cloudflare) cambia cada vez que se enciende el servidor: esta página fija la
+  // lee de url.json y te lleva a ella. Solo se aceptan direcciones https://xxxx.trycloudflare.com.
+  const VALIDA = /^https:\/\/[a-z0-9][a-z0-9-]*\.trycloudflare\.com\/?$/;
+  const CADUCA_MIN = 30;                       // sin "latido" del servidor en este tiempo = apagado
+  const estado = document.getElementById("estado");
+  const boton = document.getElementById("boton");
+  const detalle = document.getElementById("detalle");
+  const soloVer = new URLSearchParams(location.search).has("ver");     // ?ver = no redirigir (para comprobar)
+  try {
+    const r = await fetch("url.json?t=" + Date.now(), { cache: "no-store" });
+    const d = await r.json();
+    const fecha = d.actualizado ? new Date(d.actualizado) : null;
+    const minutos = fecha ? (Date.now() - fecha.getTime()) / 60000 : Infinity;
+    const cuando = fecha ? fecha.toLocaleString("es-ES") : "";
+    if (d.activo && typeof d.url === "string" && VALIDA.test(d.url) && minutos < CADUCA_MIN) {
+      estado.textContent = soloVer ? "Servidor encendido." : "Servidor encendido. Entrando…";
+      boton.href = d.url; boton.hidden = false;
+      detalle.textContent = "Necesitarás el código de acceso que te hayan dado.";
+      if (!soloVer) setTimeout(() => location.replace(d.url), 1200);
+    } else {
+      estado.textContent = "El servidor está apagado ahora mismo.";
+      estado.classList.add("apagado");
+      detalle.textContent = "Vuelve a probar cuando quien lo aloja lo encienda." +
+                            (cuando ? " Última señal: " + cuando + "." : "");
+    }
+  } catch (e) {
+    estado.textContent = "No he podido consultar el estado del servidor.";
+    estado.classList.add("apagado");
+    detalle.textContent = "Recarga la página en unos segundos.";
+  }
+})();
+</script>
+</body>
+</html>
